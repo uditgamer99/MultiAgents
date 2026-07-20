@@ -39,7 +39,14 @@ android {
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
     }
-
+signingConfigs {
+    debug {
+        storeFile = file("debug.keystore")
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+    }
+}
     buildTypes {
         release {
             // Signed with the debug key for now so `flutter build apk`
