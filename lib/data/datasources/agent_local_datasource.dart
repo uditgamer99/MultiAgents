@@ -33,5 +33,29 @@ class AgentLocalDataSource {
       'description':
           'Creates daily tasks, project planning and workflow management.',
     },
+    {
+      'id': 'flutter-developer',
+      'icon': '📱',
+      'name': 'Flutter Developer',
+      'description':
+          'Writes only Flutter (Dart) code. Builds complete Flutter apps, '
+              'widgets, Riverpod, Firebase, clean architecture and mobile UI.',
+    },
+    {
+      'id': 'ai-engineer',
+      'icon': '🤖',
+      'name': 'AI Engineer',
+      'description':
+          'Creates AI agents, prompts, automation workflows, API '
+              'integrations, Python AI scripts and LLM-based applications.',
+    },
+    {
+      'id': 'designer',
+      'icon': '🎨',
+      'name': 'Designer',
+      'description':
+          'Creates UI/UX designs, color palettes, app layouts, logos, '
+              'icons, banners, thumbnails and design systems.',
+    },
   ];
 }
