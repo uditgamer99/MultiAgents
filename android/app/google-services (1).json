@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "887441552861",
+    "project_id": "student-money-hub-1191c",
+    "storage_bucket": "student-money-hub-1191c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:887441552861:android:5665c53b0994b69faff234",
+        "android_client_info": {
+          "package_name": "com.duoai.duo_ai"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "887441552861-biv2illl1nva1hqohe2ltk28prmd4pn7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-1cWSYCkmnNyvTYEqvZSeyjJVLXzBSOo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "887441552861-biv2illl1nva1hqohe2ltk28prmd4pn7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:887441552861:android:8e2791e143da1f1baff234",
+        "android_client_info": {
+          "package_name": "com.uditgamer99.student_money_hub"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "887441552861-2mcporaf8iqlps4m8fvqilj8cnrmc7ht.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.uditgamer99.student_money_hub",
+            "certificate_hash": "d8a2b518a27051ba66af3333934788c2d41444b8"
+          }
+        },
+        {
+          "client_id": "887441552861-biv2illl1nva1hqohe2ltk28prmd4pn7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-1cWSYCkmnNyvTYEqvZSeyjJVLXzBSOo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "887441552861-biv2illl1nva1hqohe2ltk28prmd4pn7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
