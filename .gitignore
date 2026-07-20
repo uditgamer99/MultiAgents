@@ -1,0 +1,30 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+
+# Android
+android/local.properties
+android/.gradle/
+# NOTE: gradle-wrapper.jar under android/gradle/wrapper/ is intentionally
+# committed — it's required to bootstrap Gradle in CI.
+android/key.properties
+*.jks
+*.keystore
+
+# iOS / macOS (kept out until those platforms are added)
+ios/
+macos/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store

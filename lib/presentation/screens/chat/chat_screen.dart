@@ -1,0 +1,122 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../domain/entities/agent_entity.dart';
+import '../../providers/agent_list_provider.dart';
+import '../../providers/chat_provider.dart';
+import 'widgets/chat_input_field.dart';
+import 'widgets/message_bubble.dart';
+import 'widgets/typing_indicator.dart';
+
+/// Reusable chat UI shared by every agent. [agentId] is the only
+/// thing that changes between agents — it selects the Firestore
+/// history and (for now) the fake canned response.
+class ChatScreen extends ConsumerStatefulWidget {
+  final String agentId;
+
+  const ChatScreen({super.key, required this.agentId});
+
+  @override
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends ConsumerState<ChatScreen> {
+  final _scrollController = ScrollController();
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  AgentEntity? _findAgent(List<AgentEntity> agents) {
+    for (final agent in agents) {
+      if (agent.id == widget.agentId) return agent;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final messagesAsync = ref.watch(chatMessagesProvider(widget.agentId));
+    final sendState = ref.watch(chatViewModelProvider(widget.agentId));
+    final isSending = sendState.isLoading;
+    final agents = ref.watch(agentListProvider).valueOrNull ?? const [];
+    final agent = _findAgent(agents);
+
+    // Auto-scroll whenever the message list updates or a send starts.
+    ref.listen(chatMessagesProvider(widget.agentId), (previous, next) {
+      next.whenData((_) => _scrollToBottom());
+    });
+    ref.listen(chatViewModelProvider(widget.agentId), (previous, next) {
+      if (next.isLoading) _scrollToBottom();
+      next.whenOrNull(
+        error: (error, _) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(error.toString())));
+        },
+      );
+    });
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(agent != null ? '${agent.icon}  ${agent.name}' : 'Chat'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: messagesAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) =>
+                  Center(child: Text("Couldn't load chat: $error")),
+              data: (messages) {
+                if (messages.isEmpty && !isSending) {
+                  return Center(
+                    child: Text(
+                      'Say hello to get started',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(12),
+                  itemCount: messages.length + (isSending ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == messages.length) {
+                      return const TypingIndicator();
+                    }
+                    return MessageBubble(message: messages[index]);
+                  },
+                );
+              },
+            ),
+          ),
+          const Divider(height: 1),
+          ChatInputField(
+            enabled: !isSending,
+            onSend: (text) {
+              ref
+                  .read(chatViewModelProvider(widget.agentId).notifier)
+                  .sendMessage(text);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
