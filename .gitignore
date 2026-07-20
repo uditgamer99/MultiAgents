@@ -16,6 +16,7 @@ android/.gradle/
 android/key.properties
 *.jks
 *.keystore
+!android/app/debug.keystore
 
 # iOS / macOS (kept out until those platforms are added)
 ios/
