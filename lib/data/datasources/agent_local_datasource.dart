@@ -27,11 +27,14 @@ class AgentLocalDataSource {
               'ideas, captions and marketing content.',
     },
     {
-      'id': 'manager',
-      'icon': '📋',
-      'name': 'Manager',
+      'id': 'ceo',
+      'icon': '👑',
+      'name': 'CEO',
       'description':
-          'Creates daily tasks, project planning and workflow management.',
+          'The CEO manages all AI agents. In future phases it will analyze '
+              'user requests, divide them into subtasks, delegate work to '
+              'specialist agents, and combine all responses into one final '
+              'answer.',
     },
     {
       'id': 'flutter-developer',
@@ -56,6 +59,14 @@ class AgentLocalDataSource {
       'description':
           'Creates UI/UX designs, color palettes, app layouts, logos, '
               'icons, banners, thumbnails and design systems.',
+    },
+    {
+      'id': 'researcher',
+      'icon': '🔍',
+      'name': 'Researcher',
+      'description':
+          'Researches topics, searches information, compares products, '
+              'summarizes content and collects references.',
     },
   ];
 }
