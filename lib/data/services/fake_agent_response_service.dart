@@ -17,13 +17,21 @@ class FakeAgentResponseService implements AgentResponseService {
     await Future.delayed(const Duration(milliseconds: 900));
 
     switch (agentId) {
+      case 'ceo':
+        return "I am the CEO. In future updates I will coordinate all "
+            "specialist AI agents.";
       case 'web-developer':
-        return "I'm the Web Developer.\n"
-            "I only generate HTML, CSS and JavaScript.";
+        return "I only write HTML, CSS and JavaScript.";
+      case 'flutter-developer':
+        return "I only write Flutter and Dart.";
       case 'marketing':
-        return "I'm the Marketing Agent.";
-      case 'manager':
-        return "I'm the Manager Agent.";
+        return "I create marketing strategies and content.";
+      case 'ai-engineer':
+        return "I build AI agents, automation and AI systems.";
+      case 'designer':
+        return "I create UI, UX and graphic designs.";
+      case 'researcher':
+        return "I research information and summarize findings.";
       default:
         return "I'm not sure which agent you're talking to.";
     }
