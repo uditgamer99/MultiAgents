@@ -11,62 +11,46 @@ class AgentLocalDataSource {
 
   static final List<Map<String, dynamic>> _agents = [
     {
-      'id': 'web-developer',
-      'icon': '🌐',
-      'name': 'Web Developer',
-      'description':
-          'Writes only HTML, CSS and JavaScript. Never writes Flutter, '
-              'Python or any other language.',
-    },
-    {
-      'id': 'marketing',
-      'icon': '📈',
-      'name': 'Marketing',
-      'description':
-          'Creates Instagram Reels, YouTube Shorts, Product Hunt launch '
-              'ideas, captions and marketing content.',
-    },
-    {
       'id': 'ceo',
       'icon': '👑',
       'name': 'CEO',
-      'description':
-          'The CEO manages all AI agents. In future phases it will analyze '
-              'user requests, divide them into subtasks, delegate work to '
-              'specialist agents, and combine all responses into one final '
-              'answer.',
+      'description': 'Manages and coordinates all AI agents.',
+    },
+    {
+      'id': 'web-developer',
+      'icon': '🌐',
+      'name': 'Web Developer',
+      'description': 'Writes HTML, CSS and JavaScript.',
     },
     {
       'id': 'flutter-developer',
       'icon': '📱',
       'name': 'Flutter Developer',
-      'description':
-          'Writes only Flutter (Dart) code. Builds complete Flutter apps, '
-              'widgets, Riverpod, Firebase, clean architecture and mobile UI.',
+      'description': 'Writes Flutter and Dart code.',
+    },
+    {
+      'id': 'marketing',
+      'icon': '📈',
+      'name': 'Marketing',
+      'description': 'Creates marketing content and strategies.',
     },
     {
       'id': 'ai-engineer',
       'icon': '🤖',
       'name': 'AI Engineer',
-      'description':
-          'Creates AI agents, prompts, automation workflows, API '
-              'integrations, Python AI scripts and LLM-based applications.',
+      'description': 'Builds AI agents and automations.',
     },
     {
       'id': 'designer',
       'icon': '🎨',
       'name': 'Designer',
-      'description':
-          'Creates UI/UX designs, color palettes, app layouts, logos, '
-              'icons, banners, thumbnails and design systems.',
+      'description': 'Creates UI, UX and graphic designs.',
     },
     {
       'id': 'researcher',
       'icon': '🔍',
       'name': 'Researcher',
-      'description':
-          'Researches topics, searches information, compares products, '
-              'summarizes content and collects references.',
+      'description': 'Researches and summarizes information.',
     },
   ];
 }
