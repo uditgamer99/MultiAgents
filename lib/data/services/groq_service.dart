@@ -61,17 +61,21 @@ class GroqService implements AgentResponseService {
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final choices = data['choices'] as List<dynamic>?;
-    final content = (choices != null && choices.isNotEmpty)
-        ? (choices.first as Map<String, dynamic>)['message']
-            ?['content'] as String?
-        : null;
+final choices = data['choices'] as List<dynamic>?;
 
-    if (content == null || content.trim().isEmpty) {
-      throw const FormatException('Groq API returned an empty response.');
-    }
+String? content;
 
-    return content.trim();
+if (choices != null && choices.isNotEmpty) {
+  final firstChoice = choices.first as Map<String, dynamic>;
+  final message = firstChoice['message'] as Map<String, dynamic>?;
+  content = message?['content'] as String?;
+}
+
+if (content == null || content.trim().isEmpty) {
+  throw const FormatException('Groq API returned an empty response.');
+}
+
+return content.trim();
   }
 
   String _systemPromptFor(String agentId) {
