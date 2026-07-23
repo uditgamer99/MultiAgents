@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/chat_repository_impl.dart';
-import '../../data/services/fake_agent_response_service.dart';
+import '../../data/services/groq_service.dart';
 import '../../domain/entities/chat_message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/services/agent_response_service.dart';
@@ -12,10 +12,11 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   return ChatRepositoryImpl();
 });
 
-/// The only line that needs to change to go from fake replies to the
-/// real Claude API: point this at a Claude-backed AgentResponseService.
+/// Real replies via Groq's Chat Completions API. Swapping providers
+/// again later (e.g. to a different model provider) only means
+/// changing this one line.
 final agentResponseServiceProvider = Provider<AgentResponseService>((ref) {
-  return FakeAgentResponseService();
+  return GroqService();
 });
 
 final getMessagesUseCaseProvider = Provider<GetMessagesUseCase>((ref) {
