@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import '../../../core/errors/exceptions.dart';
 import '../../../core/utils/logger.dart';
 import '../../entities/chat_message_entity.dart';
 import '../../repositories/chat_repository.dart';
@@ -76,14 +79,22 @@ class SendMessageUseCase {
           .timeout(_responseTimeout);
     } catch (error, stackTrace) {
       AppLogger.error(
-        'SendMessageUseCase: agent response failed for $agentId',
+        'SendMessageUseCase: agent response failed for $agentId'
+        '${error is AgentResponseException ? ' (${error.technicalDetail})' : ''}',
         error,
         stackTrace,
       );
-      await _addErrorMessage(
-        agentId,
-        "Sorry, I couldn't generate a response. Please try again.",
-      );
+      // AgentResponseException already carries a short, user-safe
+      // message distinguishing network vs API-error causes; a plain
+      // timeout gets its own message; anything else falls back to a
+      // generic one.
+      final friendlyMessage = switch (error) {
+        AgentResponseException(:final message) => message,
+        TimeoutException() =>
+          'The request took too long. Please try again.',
+        _ => "Sorry, I couldn't generate a response. Please try again.",
+      };
+      await _addErrorMessage(agentId, friendlyMessage);
       rethrow;
     }
 
