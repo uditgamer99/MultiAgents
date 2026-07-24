@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../domain/entities/chat_message_entity.dart';
 import '../../domain/services/agent_response_service.dart';
 import '../constants/agent_system_prompts.dart';
 
@@ -28,6 +29,12 @@ class GroqService implements AgentResponseService {
     defaultValue: 'openai/gpt-oss-20b',
   );
 
+  /// How many prior messages (each, not pairs) to send as context.
+  /// Keeps requests bounded for very long conversations instead of
+  /// resending the entire history forever. No streaming, no memory
+  /// beyond this in-request context — just what the task asked for.
+  static const _maxHistoryMessages = 20;
+
   final http.Client _client;
 
   GroqService({http.Client? client}) : _client = client ?? http.Client();
@@ -35,6 +42,7 @@ class GroqService implements AgentResponseService {
   @override
   Future<String> getResponse({
     required String agentId,
+    required List<ChatMessageEntity> history,
     required String userMessage,
   }) async {
     if (_apiKey.isEmpty) {
@@ -44,6 +52,26 @@ class GroqService implements AgentResponseService {
       );
     }
 
+    final trimmedHistory = history.length > _maxHistoryMessages
+        ? history.sublist(history.length - _maxHistoryMessages)
+        : history;
+
+    final messages = [
+      {
+        'role': 'system',
+        'content': AgentSystemPrompts.forAgent(agentId),
+      },
+      // Previous user + assistant messages, oldest first, exactly as
+      // they were exchanged — this is the conversation memory.
+      for (final message in trimmedHistory)
+        {
+          'role': message.sender == MessageSender.user ? 'user' : 'assistant',
+          'content': message.text,
+        },
+      // The message being sent right now.
+      {'role': 'user', 'content': userMessage},
+    ];
+
     final response = await _client.post(
       Uri.parse(_endpoint),
       headers: {
@@ -52,13 +80,7 @@ class GroqService implements AgentResponseService {
       },
       body: jsonEncode({
         'model': _model,
-        'messages': [
-          {
-            'role': 'system',
-            'content': AgentSystemPrompts.forAgent(agentId),
-          },
-          {'role': 'user', 'content': userMessage},
-        ],
+        'messages': messages,
       }),
     );
 
