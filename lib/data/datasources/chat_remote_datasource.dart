@@ -37,6 +37,15 @@ class ChatRemoteDataSource {
         );
   }
 
+  /// One-time fetch (not a live listener) — used to build conversation
+  /// context for an AI request.
+  Future<List<ChatMessageModel>> getMessages(String agentId) async {
+    final snapshot = await _messagesRef(agentId).orderBy('timestamp').get();
+    return snapshot.docs
+        .map((doc) => ChatMessageModel.fromFirestore(doc.id, doc.data()))
+        .toList();
+  }
+
   Future<void> addMessage(String agentId, ChatMessageModel message) async {
     await _messagesRef(agentId).add(message.toFirestore());
   }
