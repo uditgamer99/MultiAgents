@@ -4,11 +4,16 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../../domain/services/agent_response_service.dart';
+import '../constants/agent_system_prompts.dart';
 
 /// Real AI backing for chat replies, via Groq's OpenAI-compatible
 /// Chat Completions API. Implements the same [AgentResponseService]
 /// contract the fake placeholder service used — nothing above this
 /// layer (usecases, ViewModel, screens) had to change to adopt it.
+///
+/// Every agent shares this exact same service and model — the only
+/// thing that differs per agent is the system prompt, looked up from
+/// [AgentSystemPrompts].
 ///
 /// The API key is never hardcoded: it's read at build time from
 /// `--dart-define=GROQ_API_KEY=...`, which keeps it out of source
@@ -48,7 +53,10 @@ class GroqService implements AgentResponseService {
       body: jsonEncode({
         'model': _model,
         'messages': [
-          {'role': 'system', 'content': _systemPromptFor(agentId)},
+          {
+            'role': 'system',
+            'content': AgentSystemPrompts.forAgent(agentId),
+          },
           {'role': 'user', 'content': userMessage},
         ],
       }),
@@ -61,51 +69,16 @@ class GroqService implements AgentResponseService {
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-final choices = data['choices'] as List<dynamic>?;
+    final choices = data['choices'] as List<dynamic>?;
+    final content = (choices != null && choices.isNotEmpty)
+        ? (choices.first as Map<String, dynamic>)['message']
+            ?['content'] as String?
+        : null;
 
-String? content;
+    if (content == null || content.trim().isEmpty) {
+      throw const FormatException('Groq API returned an empty response.');
+    }
 
-if (choices != null && choices.isNotEmpty) {
-  final firstChoice = choices.first as Map<String, dynamic>;
-  final message = firstChoice['message'] as Map<String, dynamic>?;
-  content = message?['content'] as String?;
-}
-
-if (content == null || content.trim().isEmpty) {
-  throw const FormatException('Groq API returned an empty response.');
-}
-
-return content.trim();
+    return content.trim();
   }
-
-  String _systemPromptFor(String agentId) {
-    return _systemPrompts[agentId] ?? _systemPrompts['default']!;
-  }
-
-  /// One system prompt per agent — this is what actually gives each
-  /// agent its distinct behavior now that replies are real.
-  static const Map<String, String> _systemPrompts = {
-    'ceo': 'You are the CEO agent inside a multi-agent AI app called '
-        'DUO AI. You oversee the other specialist agents (Web Developer, '
-        'Flutter Developer, Marketing, AI Engineer, Designer, Researcher). '
-        'You do not yet delegate tasks to them — that comes in a future '
-        'update. For now, respond helpfully and briefly as the CEO.',
-    'web-developer': 'You are the Web Developer agent. You only write '
-        'HTML, CSS and JavaScript. Never write Flutter, Python, or any '
-        'other language or framework, even if asked.',
-    'flutter-developer': 'You are the Flutter Developer agent. You only '
-        'write Flutter and Dart code. Never write HTML, CSS, JavaScript, '
-        'Python, or any other language or framework, even if asked.',
-    'marketing': 'You are the Marketing agent. You create marketing '
-        'strategies, content ideas, captions and campaign concepts — '
-        'e.g. Instagram Reels, YouTube Shorts, Product Hunt launches.',
-    'ai-engineer': 'You are the AI Engineer agent. You build AI agents, '
-        'prompts, automation workflows, API integrations and LLM-based '
-        'applications.',
-    'designer': 'You are the Designer agent. You create UI/UX designs, '
-        'color palettes, layouts, logos, icons and design systems.',
-    'researcher': 'You are the Researcher agent. You research topics, '
-        'compare options, summarize information and collect references.',
-    'default': 'You are a helpful assistant.',
-  };
 }
