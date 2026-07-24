@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../../core/errors/exceptions.dart';
 import '../../domain/entities/chat_message_entity.dart';
 import '../../domain/services/agent_response_service.dart';
 import '../constants/agent_system_prompts.dart';
@@ -46,9 +47,9 @@ class GroqService implements AgentResponseService {
     required String userMessage,
   }) async {
     if (_apiKey.isEmpty) {
-      throw StateError(
-        'GROQ_API_KEY is not set. Build with '
-        '--dart-define=GROQ_API_KEY=your_key (or wire it into CI).',
+      throw const AgentResponseException(
+        "There's a configuration issue with the AI service. Please try again later.",
+        'GROQ_API_KEY is not set. Build with --dart-define=GROQ_API_KEY=your_key.',
       );
     }
 
@@ -72,25 +73,50 @@ class GroqService implements AgentResponseService {
       {'role': 'user', 'content': userMessage},
     ];
 
-    final response = await _client.post(
-      Uri.parse(_endpoint),
-      headers: {
-        'Authorization': 'Bearer $_apiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'model': _model,
-        'messages': messages,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      throw HttpException(
-        'Groq API error ${response.statusCode}: ${response.body}',
+    http.Response response;
+    try {
+      response = await _client.post(
+        Uri.parse(_endpoint),
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': _model,
+          'messages': messages,
+        }),
+      );
+    } on SocketException catch (error) {
+      // No route to the internet at all (airplane mode, no signal, DNS
+      // failure, etc.) — this is a network error, not an API error.
+      throw AgentResponseException(
+        'No internet connection. Please check your network and try again.',
+        error,
+      );
+    } on http.ClientException catch (error) {
+      // The http package's own connection-level failure type — covers
+      // cases SocketException doesn't (e.g. connection reset/refused).
+      throw AgentResponseException(
+        'Couldn\'t reach the AI service. Please check your connection and try again.',
+        error,
       );
     }
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode != 200) {
+      throw AgentResponseException(_messageForStatus(response.statusCode),
+          'Groq API error ${response.statusCode}: ${response.body}');
+    }
+
+    final Map<String, dynamic> data;
+    try {
+      data = jsonDecode(response.body) as Map<String, dynamic>;
+    } on FormatException catch (error) {
+      throw AgentResponseException(
+        'Received an unreadable response from the AI service. Please try again.',
+        error,
+      );
+    }
+
     final choices = data['choices'] as List<dynamic>?;
     final content = (choices != null && choices.isNotEmpty)
         ? (choices.first as Map<String, dynamic>)['message']
@@ -98,9 +124,28 @@ class GroqService implements AgentResponseService {
         : null;
 
     if (content == null || content.trim().isEmpty) {
-      throw const FormatException('Groq API returned an empty response.');
+      throw const AgentResponseException(
+        'Received an empty response from the AI service. Please try again.',
+        'Groq API returned no message content',
+      );
     }
 
     return content.trim();
+  }
+
+  /// User-safe message per HTTP status range. Never includes response
+  /// bodies or key-related details — those go in the technical detail
+  /// passed alongside this, which is logged, not shown.
+  String _messageForStatus(int statusCode) {
+    if (statusCode == 401 || statusCode == 403) {
+      return "There's a configuration issue with the AI service. Please try again later.";
+    }
+    if (statusCode == 429) {
+      return 'The AI service is busy right now. Please wait a moment and try again.';
+    }
+    if (statusCode >= 500) {
+      return 'The AI service is temporarily unavailable. Please try again.';
+    }
+    return 'The AI service returned an unexpected error. Please try again.';
   }
 }
