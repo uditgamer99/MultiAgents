@@ -15,6 +15,11 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<List<ChatMessageEntity>> getMessages(String agentId) {
+    return _remoteDataSource.getMessages(agentId);
+  }
+
+  @override
   Future<void> addMessage(ChatMessageEntity message) {
     final model = ChatMessageModel(
       id: message.id,
