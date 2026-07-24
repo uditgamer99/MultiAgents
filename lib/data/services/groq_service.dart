@@ -118,10 +118,13 @@ class GroqService implements AgentResponseService {
     }
 
     final choices = data['choices'] as List<dynamic>?;
-    final content = (choices != null && choices.isNotEmpty)
-        ? (choices.first as Map<String, dynamic>)['message']
-            ?['content'] as String?
-        : null;
+    String? content;
+    if (choices != null && choices.isNotEmpty) {
+      final message = (choices.first as Map<String, dynamic>)['message'];
+      if (message is Map<String, dynamic>) {
+        content = message['content'] as String?;
+      }
+    }
 
     if (content == null || content.trim().isEmpty) {
       throw const AgentResponseException(
