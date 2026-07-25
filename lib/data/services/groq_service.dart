@@ -84,6 +84,11 @@ class GroqService implements AgentResponseService {
         body: jsonEncode({
           'model': _model,
           'messages': messages,
+          // Groq's completion cap defaults low if unset, which was
+          // silently truncating longer code generations mid-file.
+          // 8192 leaves generous room while staying well inside the
+          // model's 128k combined prompt+response context.
+          'max_completion_tokens': 8192,
         }),
       );
     } on SocketException catch (error) {
