@@ -24,10 +24,18 @@ class AgentSystemPrompts {
       '<the file\'s code>\n\n'
       '📄 style.css\n'
       '<the file\'s code>\n\n'
-      'List every file the user needs this way, one after another. '
-      'Never generate ZIP archives or any other compressed file. '
-      'Never generate folders or a directory structure. Only ever '
-      'produce individual files shown directly in the chat.';
+      '📄 script.js\n'
+      '<the file\'s code>\n\n'
+      'For a website, always split concerns into separate files this '
+      'way — HTML in index.html, CSS in its own style.css, JavaScript '
+      'in its own script.js — and link them from the HTML with '
+      '<link> and <script src="..."> tags. Do not inline <style> or '
+      '<script> blocks inside the HTML file unless the user '
+      'specifically asks for a single self-contained file. List every '
+      'file the user needs this way, one after another. Never generate '
+      'ZIP archives or any other compressed file. Never generate '
+      'folders or a directory structure. Only ever produce individual '
+      'files shown directly in the chat.';
 
   static const Map<String, String> _prompts = {
     'ceo': 'You are the CEO agent inside a multi-agent AI app called '
