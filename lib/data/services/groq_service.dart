@@ -34,7 +34,7 @@ class GroqService implements AgentResponseService {
   /// Keeps requests bounded for very long conversations instead of
   /// resending the entire history forever. No streaming, no memory
   /// beyond this in-request context — just what the task asked for.
-  static const _maxHistoryMessages = 20;
+  static const _maxHistoryMessages = 6;
 
   final http.Client _client;
 
@@ -88,7 +88,7 @@ class GroqService implements AgentResponseService {
           // truncating longer code generations mid-file. Kept
           // moderate (rather than the max 8192) to stay safely under
           // any per-request cap a given API key/tier might enforce.
-          'max_completion_tokens': 4096,
+          'max_completion_tokens': 1500,
         }),
       );
     } on SocketException catch (error) {
