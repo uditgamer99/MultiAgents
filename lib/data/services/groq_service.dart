@@ -85,10 +85,10 @@ class GroqService implements AgentResponseService {
           'model': _model,
           'messages': messages,
           // Groq's completion cap defaults low if unset, which was
-          // silently truncating longer code generations mid-file.
-          // 8192 leaves generous room while staying well inside the
-          // model's 128k combined prompt+response context.
-          'max_completion_tokens': 8192,
+          // truncating longer code generations mid-file. Kept
+          // moderate (rather than the max 8192) to stay safely under
+          // any per-request cap a given API key/tier might enforce.
+          'max_completion_tokens': 4096,
         }),
       );
     } on SocketException catch (error) {
@@ -108,8 +108,10 @@ class GroqService implements AgentResponseService {
     }
 
     if (response.statusCode != 200) {
-      throw AgentResponseException(_messageForStatus(response.statusCode),
-          'Groq API error ${response.statusCode}: ${response.body}');
+      throw AgentResponseException(
+        _messageForStatus(response.statusCode, response.body),
+        'Groq API error ${response.statusCode}: ${response.body}',
+      );
     }
 
     final Map<String, dynamic> data;
@@ -141,10 +143,15 @@ class GroqService implements AgentResponseService {
     return content.trim();
   }
 
-  /// User-safe message per HTTP status range. Never includes response
-  /// bodies or key-related details — those go in the technical detail
-  /// passed alongside this, which is logged, not shown.
-  String _messageForStatus(int statusCode) {
+  /// User-safe message per HTTP status range. For the less common
+  /// cases (anything that isn't clearly auth/rate-limit/server-down)
+  /// this also includes Groq's own error text — that response body is
+  /// just an error description with no key or account details in it,
+  /// so it's safe to surface, and it turns "unexpected error" into an
+  /// actually diagnosable message instead of a dead end.
+  String _messageForStatus(int statusCode, String body) {
+    final groqDetail = _extractGroqErrorMessage(body);
+
     if (statusCode == 401 || statusCode == 403) {
       return "There's a configuration issue with the AI service. Please try again later.";
     }
@@ -154,6 +161,27 @@ class GroqService implements AgentResponseService {
     if (statusCode >= 500) {
       return 'The AI service is temporarily unavailable. Please try again.';
     }
+    if (groqDetail != null) {
+      return 'The AI service returned an error: $groqDetail';
+    }
     return 'The AI service returned an unexpected error. Please try again.';
+  }
+
+  /// Groq's error responses look like `{"error": {"message": "..."}}`.
+  /// Returns null (never throws) if the body doesn't match that shape.
+  String? _extractGroqErrorMessage(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final error = decoded['error'];
+        if (error is Map<String, dynamic>) {
+          final message = error['message'];
+          if (message is String && message.isNotEmpty) return message;
+        }
+      }
+    } catch (_) {
+      // Not JSON, or not the shape we expect — fall back silently.
+    }
+    return null;
   }
 }
