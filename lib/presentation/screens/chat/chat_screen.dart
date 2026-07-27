@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/entities/agent_entity.dart';
 import '../../providers/agent_list_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/chat_session_provider.dart';
 import 'widgets/chat_input_field.dart';
 import 'widgets/message_bubble.dart';
 import 'widgets/typing_indicator.dart';
@@ -22,6 +23,11 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
+
+  /// Tracks message count so the chat-session "last updated" timestamp
+  /// only gets touched when a message is genuinely *new* — not on
+  /// every rebuild or on the initial load of existing history.
+  int? _lastMessageCount;
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -56,8 +62,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final agent = _findAgent(agents);
 
     // Auto-scroll whenever the message list updates or a send starts.
+    // Also bumps the chat session's "last updated" metadata (for the
+    // Chats list's sorting) — but only when a message was genuinely
+    // added, not on the initial load of existing history.
     ref.listen(chatMessagesProvider(widget.agentId), (previous, next) {
-      next.whenData((_) => _scrollToBottom());
+      next.whenData((messages) {
+        _scrollToBottom();
+        final previousCount = _lastMessageCount;
+        _lastMessageCount = messages.length;
+        if (previousCount != null && messages.length > previousCount) {
+          ref.read(chatSessionsProvider.notifier).touch(widget.agentId);
+        }
+      });
     });
     ref.listen(chatViewModelProvider(widget.agentId), (previous, next) {
       if (next.isLoading) _scrollToBottom();
