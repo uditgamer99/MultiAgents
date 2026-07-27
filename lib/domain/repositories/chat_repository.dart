@@ -14,4 +14,8 @@ abstract class ChatRepository {
 
   /// Persists a single message (user or agent) to that agent's history.
   Future<void> addMessage(ChatMessageEntity message);
+
+  /// Deletes every message in one agent's history — used when a chat
+  /// session is deleted. Does not affect any other agent's messages.
+  Future<void> clearMessages(String agentId);
 }
