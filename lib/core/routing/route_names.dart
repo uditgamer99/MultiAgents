@@ -6,6 +6,7 @@ class RouteNames {
   static const String login = '/login';
   static const String register = '/register';
   static const String home = '/home';
+  static const String chats = '/chats';
   static const String chat = '/chat/:agentId';
 
   static String chatPath(String agentId) => '/chat/$agentId';
