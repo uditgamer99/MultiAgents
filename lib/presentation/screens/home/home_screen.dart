@@ -25,6 +25,11 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('DUO AI'),
         actions: [
           IconButton(
+            tooltip: 'Chats',
+            icon: const Icon(Icons.forum_outlined),
+            onPressed: () => context.push(RouteNames.chats),
+          ),
+          IconButton(
             tooltip: 'Log out',
             icon: const Icon(Icons.logout),
             onPressed: () =>
