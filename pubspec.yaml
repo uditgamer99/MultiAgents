@@ -34,6 +34,9 @@ dependencies:
   share_plus: ^11.0.0
   path_provider: ^2.1.4
 
+  # Local chat session metadata (title, pinned, timestamps)
+  shared_preferences: ^2.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
