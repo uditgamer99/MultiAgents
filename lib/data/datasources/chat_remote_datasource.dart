@@ -49,4 +49,25 @@ class ChatRemoteDataSource {
   Future<void> addMessage(String agentId, ChatMessageModel message) async {
     await _messagesRef(agentId).add(message.toFirestore());
   }
+
+  /// Batch-deletes every message document for one agent. Firestore
+  /// batches cap at 500 writes, so this chunks if a history somehow
+  /// grew larger than that.
+  Future<void> clearMessages(String agentId) async {
+    final snapshot = await _messagesRef(agentId).get();
+    final docs = snapshot.docs;
+    const chunkSize = 450;
+
+    for (var i = 0; i < docs.length; i += chunkSize) {
+      final batch = _firestore.batch();
+      final chunk = docs.sublist(
+        i,
+        i + chunkSize > docs.length ? docs.length : i + chunkSize,
+      );
+      for (final doc in chunk) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
 }
