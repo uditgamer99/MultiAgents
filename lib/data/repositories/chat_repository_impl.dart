@@ -32,6 +32,15 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<void> updateMessage(ChatMessageEntity message) {
+    return _remoteDataSource.updateMessage(
+      message.agentId,
+      message.id,
+      message.text,
+    );
+  }
+
+  @override
   Future<void> clearMessages(String agentId) {
     return _remoteDataSource.clearMessages(agentId);
   }
