@@ -15,6 +15,11 @@ abstract class ChatRepository {
   /// Persists a single message (user or agent) to that agent's history.
   Future<void> addMessage(ChatMessageEntity message);
 
+  /// Overwrites an existing message's text in place (same id, same
+  /// position in the conversation) — used to replace a regenerated AI
+  /// reply without disturbing message order or duplicating anything.
+  Future<void> updateMessage(ChatMessageEntity message);
+
   /// Deletes every message in one agent's history — used when a chat
   /// session is deleted. Does not affect any other agent's messages.
   Future<void> clearMessages(String agentId);
