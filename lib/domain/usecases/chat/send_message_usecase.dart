@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/errors/exceptions.dart';
+import '../../../core/utils/cancel_token.dart';
 import '../../../core/utils/logger.dart';
 import '../../entities/chat_message_entity.dart';
 import '../../repositories/chat_repository.dart';
@@ -19,6 +20,13 @@ import '../../services/agent_response_service.dart';
 /// time, and [ChatViewModel.sendMessage] (via `AsyncValue.guard`)
 /// always clears its loading state once that happens, in both the
 /// success and the failure path.
+///
+/// [cancelToken] (if provided and cancelled) is checked at three
+/// points — before requesting a reply, and again right after one
+/// arrives — so a stopped generation can never end up silently saved
+/// to the conversation after the user asked it to stop. The user's
+/// own message is never affected by cancellation: it's already saved
+/// before any of this cancellation logic even applies.
 class SendMessageUseCase {
   static const _writeTimeout = Duration(seconds: 12);
   static const _readTimeout = Duration(seconds: 12);
@@ -32,6 +40,7 @@ class SendMessageUseCase {
   Future<void> call({
     required String agentId,
     required String text,
+    CancelToken? cancelToken,
   }) async {
     // Snapshot the conversation as it stood *before* this message —
     // this becomes the "previous user/assistant messages" context
@@ -72,12 +81,28 @@ class SendMessageUseCase {
       rethrow;
     }
 
+    if (cancelToken != null && cancelToken.isCancelled) {
+      // Stopped right after sending — the user's message above is
+      // already saved (correct), we just never ask for a reply.
+      return;
+    }
+
     String replyText;
     try {
       replyText = await _responseService
-          .getResponse(agentId: agentId, history: history, userMessage: text)
+          .getResponse(
+            agentId: agentId,
+            history: history,
+            userMessage: text,
+            cancelToken: cancelToken,
+          )
           .timeout(_responseTimeout);
     } catch (error, stackTrace) {
+      if (error is OperationCancelledException) {
+        // A deliberate stop, not a failure — nothing to log, nothing
+        // to show as an error.
+        return;
+      }
       AppLogger.error(
         'SendMessageUseCase: agent response failed for $agentId'
         '${error is AgentResponseException ? ' (${error.technicalDetail})' : ''}',
@@ -96,6 +121,12 @@ class SendMessageUseCase {
       };
       await _addErrorMessage(agentId, friendlyMessage);
       rethrow;
+    }
+
+    if (cancelToken != null && cancelToken.isCancelled) {
+      // A reply arrived but the user stopped in the meantime — discard
+      // it rather than appending something they no longer asked for.
+      return;
     }
 
     final agentMessage = ChatMessageEntity(
