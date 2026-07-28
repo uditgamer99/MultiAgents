@@ -20,10 +20,27 @@ const _fileCapableAgentIds = {
 /// file-capable agents, any "📄 filename" blocks in an agent reply
 /// are rendered as [CodeFileCard]s with copy/share actions instead
 /// of raw text.
+///
+/// [showRegenerate] adds a small regenerate icon next to the
+/// timestamp — only meaningful for agent messages. [isRegenerating]
+/// shows a spinner there instead while this exact message is being
+/// regenerated; [regenerateEnabled] disables the icon (without
+/// hiding it) while any other send/regenerate is in flight.
 class MessageBubble extends StatelessWidget {
   final ChatMessageEntity message;
+  final bool showRegenerate;
+  final bool isRegenerating;
+  final bool regenerateEnabled;
+  final VoidCallback? onRegenerate;
 
-  const MessageBubble({super.key, required this.message});
+  const MessageBubble({
+    super.key,
+    required this.message,
+    this.showRegenerate = false,
+    this.isRegenerating = false,
+    this.regenerateEnabled = true,
+    this.onRegenerate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -64,15 +81,27 @@ class MessageBubble extends StatelessWidget {
             ] else
               Text(message.text, style: TextStyle(color: textColor)),
             const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                _formatTime(message.timestamp),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: textColor.withValues(alpha: 0.65),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (showRegenerate) ...[
+                  _RegenerateIcon(
+                    isRegenerating: isRegenerating,
+                    enabled: regenerateEnabled,
+                    color: textColor,
+                    onPressed: onRegenerate,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  _formatTime(message.timestamp),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: textColor.withValues(alpha: 0.65),
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
@@ -84,5 +113,49 @@ class MessageBubble extends StatelessWidget {
     final hour = dt.hour.toString().padLeft(2, '0');
     final minute = dt.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+}
+
+class _RegenerateIcon extends StatelessWidget {
+  final bool isRegenerating;
+  final bool enabled;
+  final Color color;
+  final VoidCallback? onPressed;
+
+  const _RegenerateIcon({
+    required this.isRegenerating,
+    required this.enabled,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isRegenerating) {
+      return SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation(color.withValues(alpha: 0.7)),
+        ),
+      );
+    }
+
+    return Tooltip(
+      message: 'Regenerate',
+      child: InkWell(
+        onTap: enabled ? onPressed : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: Icon(
+            Icons.refresh,
+            size: 14,
+            color: color.withValues(alpha: enabled ? 0.65 : 0.3),
+          ),
+        ),
+      ),
+    );
   }
 }
