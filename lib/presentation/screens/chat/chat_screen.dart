@@ -175,11 +175,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           const Divider(height: 1),
           ChatInputField(
-            enabled: !isSending,
+            isGenerating: isSending,
             onSend: (text) {
               ref
                   .read(chatViewModelProvider(widget.agentId).notifier)
                   .sendMessage(text);
+            },
+            onStop: () {
+              ref
+                  .read(chatViewModelProvider(widget.agentId).notifier)
+                  .cancelCurrent();
             },
           ),
         ],
