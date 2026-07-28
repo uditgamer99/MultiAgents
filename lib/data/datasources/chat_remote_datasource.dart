@@ -50,6 +50,19 @@ class ChatRemoteDataSource {
     await _messagesRef(agentId).add(message.toFirestore());
   }
 
+  /// Updates only the `text` field of an existing message document,
+  /// keeping its original timestamp so its position in the ordered
+  /// history doesn't change. [messageId] must be a real Firestore doc
+  /// id (i.e. a message already loaded from `watchMessages`/
+  /// `getMessages`, never a freshly-constructed one with an empty id).
+  Future<void> updateMessage(
+    String agentId,
+    String messageId,
+    String newText,
+  ) async {
+    await _messagesRef(agentId).doc(messageId).update({'text': newText});
+  }
+
   /// Batch-deletes every message document for one agent. Firestore
   /// batches cap at 500 writes, so this chunks if a history somehow
   /// grew larger than that.
