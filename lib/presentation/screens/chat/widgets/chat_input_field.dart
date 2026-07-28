@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// Bottom message composer: expanding text field + send button.
-/// Purely presentational — the parent screen decides what happens
-/// when a message is sent.
+/// Bottom message composer: expanding text field + a button that's
+/// either Send (idle) or Stop (while a reply is generating). Purely
+/// presentational — the parent screen decides what happens on each.
 class ChatInputField extends StatefulWidget {
   final ValueChanged<String> onSend;
-  final bool enabled;
+  final VoidCallback? onStop;
+
+  /// True while a reply is being generated — disables the text field
+  /// and swaps the trailing button from Send to Stop.
+  final bool isGenerating;
 
   const ChatInputField({
     super.key,
     required this.onSend,
-    this.enabled = true,
+    this.onStop,
+    this.isGenerating = false,
   });
 
   @override
@@ -44,7 +49,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
             Expanded(
               child: TextField(
                 controller: _controller,
-                enabled: widget.enabled,
+                enabled: !widget.isGenerating,
                 minLines: 1,
                 maxLines: 4,
                 textInputAction: TextInputAction.send,
@@ -53,10 +58,17 @@ class _ChatInputFieldState extends State<ChatInputField> {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: widget.enabled ? _submit : null,
-              icon: const Icon(Icons.arrow_upward),
-            ),
+            if (widget.isGenerating)
+              IconButton.filled(
+                tooltip: 'Stop generating',
+                onPressed: widget.onStop,
+                icon: const Icon(Icons.stop_rounded),
+              )
+            else
+              IconButton.filled(
+                onPressed: _submit,
+                icon: const Icon(Icons.arrow_upward),
+              ),
           ],
         ),
       ),
