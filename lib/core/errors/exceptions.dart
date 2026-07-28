@@ -22,3 +22,14 @@ class AgentResponseException implements Exception {
   @override
   String toString() => message;
 }
+
+/// Thrown when a request was deliberately stopped via a [CancelToken]
+/// (see core/utils/cancel_token.dart) rather than having failed. This
+/// is never treated as an error to show the user — it's a clean,
+/// expected outcome of tapping Stop.
+class OperationCancelledException implements Exception {
+  const OperationCancelledException();
+
+  @override
+  String toString() => 'Generation stopped.';
+}
