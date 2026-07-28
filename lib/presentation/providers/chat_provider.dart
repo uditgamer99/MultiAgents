@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/errors/exceptions.dart';
+import '../../core/utils/cancel_token.dart';
 import '../../data/repositories/chat_repository_impl.dart';
 import '../../data/services/groq_service.dart';
 import '../../domain/entities/chat_message_entity.dart';
@@ -49,9 +51,10 @@ final chatMessagesProvider =
 /// Per-agent ViewModel. Only tracks transient send/regenerate state
 /// (idle/loading/error) — the message list itself lives in
 /// [chatMessagesProvider] since Firestore is the source of truth.
-/// `state.isLoading` doubles as the typing-indicator flag and also
-/// disables every regenerate button while true, so a normal send and
-/// a regenerate (or two regenerates) can never overlap.
+/// `state.isLoading` doubles as the typing-indicator flag, swaps the
+/// Send button for a Stop button, and disables every regenerate
+/// button while true, so a normal send and a regenerate (or two
+/// regenerates) can never overlap.
 class ChatViewModel extends StateNotifier<AsyncValue<void>> {
   final SendMessageUseCase _sendMessageUseCase;
   final RegenerateResponseUseCase _regenerateResponseUseCase;
@@ -62,6 +65,11 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
   /// while every other button is simply disabled.
   String? _regeneratingMessageId;
   String? get regeneratingMessageId => _regeneratingMessageId;
+
+  /// Cancel token for whichever request (send or regenerate) is
+  /// currently in flight, if any — Stop cancels whichever one it is.
+  /// Null whenever nothing is running.
+  CancelToken? _currentCancelToken;
 
   ChatViewModel(
     this._sendMessageUseCase,
@@ -74,10 +82,24 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
     if (trimmed.isEmpty) return;
     if (state.isLoading) return;
 
+    final cancelToken = CancelToken();
+    _currentCancelToken = cancelToken;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() {
-      return _sendMessageUseCase(agentId: agentId, text: trimmed);
+
+    final result = await AsyncValue.guard(() {
+      return _sendMessageUseCase(
+        agentId: agentId,
+        text: trimmed,
+        cancelToken: cancelToken,
+      );
     });
+
+    // Cleared before the final state assignment below, so that by the
+    // time listeners rebuild in response to it, everything already
+    // reads back correctly (no in-between frame where a Stop button
+    // is shown with nothing left to stop).
+    _currentCancelToken = null;
+    state = _isCancelled(result) ? const AsyncData(null) : result;
   }
 
   Future<void> regenerate({
@@ -87,6 +109,8 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
   }) async {
     if (state.isLoading) return;
 
+    final cancelToken = CancelToken();
+    _currentCancelToken = cancelToken;
     _regeneratingMessageId = aiMessage.id;
     state = const AsyncLoading();
 
@@ -95,15 +119,23 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
         aiMessage: aiMessage,
         precedingUserMessageText: precedingUserMessageText,
         historyBeforeUserMessage: historyBeforeUserMessage,
+        cancelToken: cancelToken,
       );
     });
 
-    // Cleared before the final state assignment below, so that by the
-    // time listeners rebuild in response to it, regeneratingMessageId
-    // already reads back as null — otherwise the spinner could get
-    // stuck showing after regeneration has actually finished.
     _regeneratingMessageId = null;
-    state = result;
+    _currentCancelToken = null;
+    state = _isCancelled(result) ? const AsyncData(null) : result;
+  }
+
+  /// Cancels whichever request (send or regenerate) is currently in
+  /// flight. Safe to call when nothing is running — becomes a no-op.
+  void cancelCurrent() {
+    _currentCancelToken?.cancel();
+  }
+
+  bool _isCancelled(AsyncValue<void> value) {
+    return value.hasError && value.error is OperationCancelledException;
   }
 }
 
