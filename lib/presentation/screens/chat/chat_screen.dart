@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/entities/agent_entity.dart';
+import '../../../domain/entities/chat_message_entity.dart';
 import '../../providers/agent_list_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/chat_session_provider.dart';
@@ -53,11 +54,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return null;
   }
 
+  /// Walks backward from [aiMessageIndex] to find the nearest
+  /// preceding user message. Doesn't assume strict user/agent
+  /// alternation (e.g. an inserted error message could sit between
+  /// two agent-sender messages), so this is a search, not `index - 1`.
+  int? _precedingUserMessageIndex(
+    List<ChatMessageEntity> messages,
+    int aiMessageIndex,
+  ) {
+    for (var i = aiMessageIndex - 1; i >= 0; i--) {
+      if (messages[i].sender == MessageSender.user) return i;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(chatMessagesProvider(widget.agentId));
     final sendState = ref.watch(chatViewModelProvider(widget.agentId));
     final isSending = sendState.isLoading;
+    final chatNotifier = ref.read(chatViewModelProvider(widget.agentId).notifier);
+    final regeneratingMessageId = chatNotifier.regeneratingMessageId;
     final agents = ref.watch(agentListProvider).valueOrNull ?? const [];
     final agent = _findAgent(agents);
 
@@ -116,7 +133,41 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     if (index == messages.length) {
                       return const TypingIndicator();
                     }
-                    return MessageBubble(message: messages[index]);
+
+                    final message = messages[index];
+                    final isAgentMessage =
+                        message.sender == MessageSender.agent;
+                    final precedingUserIndex = isAgentMessage
+                        ? _precedingUserMessageIndex(messages, index)
+                        : null;
+
+                    if (!isAgentMessage || precedingUserIndex == null) {
+                      return MessageBubble(message: message);
+                    }
+
+                    final precedingUserText =
+                        messages[precedingUserIndex].text;
+                    final historyBeforeUserMessage =
+                        messages.sublist(0, precedingUserIndex);
+
+                    return MessageBubble(
+                      message: message,
+                      showRegenerate: true,
+                      isRegenerating: regeneratingMessageId == message.id,
+                      regenerateEnabled: !isSending,
+                      onRegenerate: () {
+                        ref
+                            .read(
+                              chatViewModelProvider(widget.agentId).notifier,
+                            )
+                            .regenerate(
+                              aiMessage: message,
+                              precedingUserMessageText: precedingUserText,
+                              historyBeforeUserMessage:
+                                  historyBeforeUserMessage,
+                            );
+                      },
+                    );
                   },
                 );
               },
