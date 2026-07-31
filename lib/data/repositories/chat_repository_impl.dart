@@ -27,6 +27,7 @@ class ChatRepositoryImpl implements ChatRepository {
       text: message.text,
       sender: message.sender,
       timestamp: message.timestamp,
+      attachments: message.attachments,
     );
     return _remoteDataSource.addMessage(message.agentId, model);
   }
