@@ -23,6 +23,19 @@ class AgentResponseException implements Exception {
   String toString() => message;
 }
 
+/// Thrown by [AttachmentPickerService] when the file picker itself
+/// can't be opened or fails outright (as opposed to an individual
+/// file being rejected, which is reported separately so the rest of
+/// a multi-file selection can still succeed). [message] is short and
+/// safe to show directly in the chat.
+class AttachmentException implements Exception {
+  final String message;
+  const AttachmentException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// Thrown when a request was deliberately stopped via a [CancelToken]
 /// (see core/utils/cancel_token.dart) rather than having failed. This
 /// is never treated as an error to show the user — it's a clean,
