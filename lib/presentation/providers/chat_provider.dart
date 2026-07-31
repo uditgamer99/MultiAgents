@@ -4,6 +4,7 @@ import '../../core/errors/exceptions.dart';
 import '../../core/utils/cancel_token.dart';
 import '../../data/repositories/chat_repository_impl.dart';
 import '../../data/services/groq_service.dart';
+import '../../domain/entities/chat_attachment_entity.dart';
 import '../../domain/entities/chat_message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/services/agent_response_service.dart';
@@ -77,9 +78,14 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
     this.agentId,
   ) : super(const AsyncData(null));
 
-  Future<void> sendMessage(String text) async {
+  Future<void> sendMessage(
+    String text, {
+    List<ChatAttachmentEntity> attachments = const [],
+  }) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    // A message needs either text or at least one attachment — an
+    // empty send with nothing attached is still a no-op.
+    if (trimmed.isEmpty && attachments.isEmpty) return;
     if (state.isLoading) return;
 
     final cancelToken = CancelToken();
@@ -90,6 +96,7 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
       return _sendMessageUseCase(
         agentId: agentId,
         text: trimmed,
+        attachments: attachments,
         cancelToken: cancelToken,
       );
     });
