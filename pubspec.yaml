@@ -37,6 +37,12 @@ dependencies:
   # Local chat session metadata (title, pinned, timestamps)
   shared_preferences: ^2.3.2
 
+  # Attachment system (Part 8A): picking files from device storage
+  # and determining their MIME type. Neither reads file contents for
+  # analysis — that's Part 8B.
+  file_picker: ^8.1.4
+  mime: ^1.0.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
