@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/utils/code_file_parser.dart';
 import '../../../../domain/entities/chat_message_entity.dart';
+import 'attachment_chip.dart';
 import 'code_file_card.dart';
 
 /// Agent ids whose replies may contain "📄 filename" code blocks —
@@ -74,11 +75,21 @@ class MessageBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (message.attachments.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Wrap(
+                  children: [
+                    for (final attachment in message.attachments)
+                      AttachmentChip(attachment: attachment, compact: true),
+                  ],
+                ),
+              ),
             if (parsed != null && parsed.hasFiles) ...[
               if (parsed.introText.isNotEmpty)
                 Text(parsed.introText, style: TextStyle(color: textColor)),
               for (final file in parsed.files) CodeFileCard(file: file),
-            ] else
+            ] else if (message.text.isNotEmpty)
               Text(message.text, style: TextStyle(color: textColor)),
             const SizedBox(height: 4),
             Row(
