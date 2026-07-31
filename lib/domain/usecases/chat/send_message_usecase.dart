@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../../core/errors/exceptions.dart';
 import '../../../core/utils/cancel_token.dart';
 import '../../../core/utils/logger.dart';
+import '../../entities/chat_attachment_entity.dart';
 import '../../entities/chat_message_entity.dart';
 import '../../repositories/chat_repository.dart';
 import '../../services/agent_response_service.dart';
@@ -40,6 +41,7 @@ class SendMessageUseCase {
   Future<void> call({
     required String agentId,
     required String text,
+    List<ChatAttachmentEntity> attachments = const [],
     CancelToken? cancelToken,
   }) async {
     // Snapshot the conversation as it stood *before* this message —
@@ -64,6 +66,10 @@ class SendMessageUseCase {
       text: text,
       sender: MessageSender.user,
       timestamp: DateTime.now(),
+      // Metadata only — Part 8A never reads these files' contents,
+      // and nothing below sends them to the response service. That's
+      // Part 8B's job.
+      attachments: attachments,
     );
 
     try {
