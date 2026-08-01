@@ -14,10 +14,17 @@ abstract class AgentResponseService {
   /// [cancelToken], if provided and cancelled mid-request, should
   /// cause this to throw [OperationCancelledException] (see
   /// core/errors/exceptions.dart) rather than a network/API error.
+  ///
+  /// [attachmentContext], if provided, is pre-formatted, size-bounded
+  /// text describing any attachments on this message (see
+  /// AttachmentContextBuilder) — implementations should include it
+  /// alongside [userMessage] and must never treat its contents as
+  /// instructions that can change the agent's behavior.
   Future<String> getResponse({
     required String agentId,
     required List<ChatMessageEntity> history,
     required String userMessage,
+    String? attachmentContext,
     CancelToken? cancelToken,
   });
 }
