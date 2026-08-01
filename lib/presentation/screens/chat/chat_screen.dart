@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/utils/send_stage.dart';
 import '../../../domain/entities/agent_entity.dart';
 import '../../../domain/entities/chat_message_entity.dart';
 import '../../providers/agent_list_provider.dart';
@@ -45,6 +46,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  String? _labelForStage(SendStage? stage) {
+    switch (stage) {
+      case SendStage.readingAttachments:
+        return 'Reading attachment…';
+      case SendStage.extractingText:
+        return 'Extracting text…';
+      case SendStage.preparingContext:
+        return 'Preparing context…';
+      case SendStage.sendingToAi:
+        return 'Sending to AI…';
+      case null:
+        return null;
+    }
   }
 
   AgentEntity? _findAgent(List<AgentEntity> agents) {
@@ -131,7 +147,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   itemCount: messages.length + (isSending ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == messages.length) {
-                      return const TypingIndicator();
+                      return ValueListenableBuilder<SendStage?>(
+                        valueListenable: chatNotifier.stageNotifier,
+                        builder: (context, stage, _) {
+                          return TypingIndicator(
+                            label: _labelForStage(stage),
+                          );
+                        },
+                      );
                     }
 
                     final message = messages[index];
@@ -145,8 +168,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       return MessageBubble(message: message);
                     }
 
-                    final precedingUserText =
-                        messages[precedingUserIndex].text;
+                    final precedingUserMessage =
+                        messages[precedingUserIndex];
                     final historyBeforeUserMessage =
                         messages.sublist(0, precedingUserIndex);
 
@@ -162,7 +185,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             )
                             .regenerate(
                               aiMessage: message,
-                              precedingUserMessageText: precedingUserText,
+                              precedingUserMessage: precedingUserMessage,
                               historyBeforeUserMessage:
                                   historyBeforeUserMessage,
                             );
