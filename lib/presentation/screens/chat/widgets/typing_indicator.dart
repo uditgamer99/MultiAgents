@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
 /// Left-aligned bubble with three gently pulsing dots, shown while
-/// waiting for the agent's reply.
+/// waiting for the agent's reply. When [label] is provided (e.g.
+/// "Reading attachment…"), it's shown next to the dots — a genuine
+/// status for whatever real step is currently running, never a fake
+/// simulated progress message.
 class TypingIndicator extends StatefulWidget {
-  const TypingIndicator({super.key});
+  final String? label;
+
+  const TypingIndicator({super.key, this.label});
 
   @override
   State<TypingIndicator> createState() => _TypingIndicatorState();
@@ -49,7 +54,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
-            return Row(
+            final dots = Row(
               mainAxisSize: MainAxisSize.min,
               children: List.generate(3, (i) {
                 final delay = i * 0.2;
@@ -67,6 +72,22 @@ class _TypingIndicatorState extends State<TypingIndicator>
                   ),
                 );
               }),
+            );
+
+            if (widget.label == null) return dots;
+
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.label!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(width: 8),
+                dots,
+              ],
             );
           },
         ),
