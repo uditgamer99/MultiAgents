@@ -1,13 +1,17 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/exceptions.dart';
 import '../../core/utils/cancel_token.dart';
+import '../../core/utils/send_stage.dart';
 import '../../data/repositories/chat_repository_impl.dart';
+import '../../data/services/attachment_context_builder.dart';
 import '../../data/services/groq_service.dart';
 import '../../domain/entities/chat_attachment_entity.dart';
 import '../../domain/entities/chat_message_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/services/agent_response_service.dart';
+import '../../domain/services/attachment_context_service.dart';
 import '../../domain/usecases/chat/get_messages_usecase.dart';
 import '../../domain/usecases/chat/regenerate_response_usecase.dart';
 import '../../domain/usecases/chat/send_message_usecase.dart';
@@ -23,6 +27,14 @@ final agentResponseServiceProvider = Provider<AgentResponseService>((ref) {
   return GroqService();
 });
 
+/// Turns attachments into the Groq-ready context block (Part 8B.2).
+/// Swapping this later — e.g. to add caching — only means changing
+/// this one line, the same way [agentResponseServiceProvider] works.
+final attachmentContextServiceProvider =
+    Provider<AttachmentContextService>((ref) {
+  return AttachmentContextBuilder();
+});
+
 final getMessagesUseCaseProvider = Provider<GetMessagesUseCase>((ref) {
   return GetMessagesUseCase(ref.watch(chatRepositoryProvider));
 });
@@ -31,6 +43,7 @@ final sendMessageUseCaseProvider = Provider<SendMessageUseCase>((ref) {
   return SendMessageUseCase(
     ref.watch(chatRepositoryProvider),
     ref.watch(agentResponseServiceProvider),
+    ref.watch(attachmentContextServiceProvider),
   );
 });
 
@@ -39,6 +52,7 @@ final regenerateResponseUseCaseProvider =
   return RegenerateResponseUseCase(
     ref.watch(chatRepositoryProvider),
     ref.watch(agentResponseServiceProvider),
+    ref.watch(attachmentContextServiceProvider),
   );
 });
 
@@ -72,6 +86,15 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
   /// Null whenever nothing is running.
   CancelToken? _currentCancelToken;
 
+  /// Which real step of the current send/regenerate is running right
+  /// now (reading attachments, extracting text, preparing context,
+  /// sending to the AI) — null whenever nothing is in flight. A
+  /// plain [ValueNotifier] rather than part of [state] so the UI can
+  /// watch it independently without extra rebuild plumbing.
+  final ValueNotifier<SendStage?> stageNotifier = ValueNotifier<SendStage?>(
+    null,
+  );
+
   ChatViewModel(
     this._sendMessageUseCase,
     this._regenerateResponseUseCase,
@@ -98,6 +121,7 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
         text: trimmed,
         attachments: attachments,
         cancelToken: cancelToken,
+        onStage: (stage) => stageNotifier.value = stage,
       );
     });
 
@@ -105,13 +129,14 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
     // time listeners rebuild in response to it, everything already
     // reads back correctly (no in-between frame where a Stop button
     // is shown with nothing left to stop).
+    stageNotifier.value = null;
     _currentCancelToken = null;
     state = _isCancelled(result) ? const AsyncData(null) : result;
   }
 
   Future<void> regenerate({
     required ChatMessageEntity aiMessage,
-    required String precedingUserMessageText,
+    required ChatMessageEntity precedingUserMessage,
     required List<ChatMessageEntity> historyBeforeUserMessage,
   }) async {
     if (state.isLoading) return;
@@ -124,12 +149,14 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
     final result = await AsyncValue.guard(() {
       return _regenerateResponseUseCase(
         aiMessage: aiMessage,
-        precedingUserMessageText: precedingUserMessageText,
+        precedingUserMessage: precedingUserMessage,
         historyBeforeUserMessage: historyBeforeUserMessage,
         cancelToken: cancelToken,
+        onStage: (stage) => stageNotifier.value = stage,
       );
     });
 
+    stageNotifier.value = null;
     _regeneratingMessageId = null;
     _currentCancelToken = null;
     state = _isCancelled(result) ? const AsyncData(null) : result;
@@ -143,6 +170,12 @@ class ChatViewModel extends StateNotifier<AsyncValue<void>> {
 
   bool _isCancelled(AsyncValue<void> value) {
     return value.hasError && value.error is OperationCancelledException;
+  }
+
+  @override
+  void dispose() {
+    stageNotifier.dispose();
+    super.dispose();
   }
 }
 
