@@ -3,10 +3,12 @@ import 'dart:async';
 import '../../../core/errors/exceptions.dart';
 import '../../../core/utils/cancel_token.dart';
 import '../../../core/utils/logger.dart';
+import '../../../core/utils/send_stage.dart';
 import '../../entities/chat_attachment_entity.dart';
 import '../../entities/chat_message_entity.dart';
 import '../../repositories/chat_repository.dart';
 import '../../services/agent_response_service.dart';
+import '../../services/attachment_context_service.dart';
 
 /// Orchestrates one send: load prior conversation history, persist the
 /// user's message, ask the response service for a reply (passing that
@@ -32,17 +34,24 @@ class SendMessageUseCase {
   static const _writeTimeout = Duration(seconds: 12);
   static const _readTimeout = Duration(seconds: 12);
   static const _responseTimeout = Duration(seconds: 20);
+  static const _attachmentTimeout = Duration(seconds: 15);
 
   final ChatRepository _repository;
   final AgentResponseService _responseService;
+  final AttachmentContextService _attachmentContextService;
 
-  SendMessageUseCase(this._repository, this._responseService);
+  SendMessageUseCase(
+    this._repository,
+    this._responseService,
+    this._attachmentContextService,
+  );
 
   Future<void> call({
     required String agentId,
     required String text,
     List<ChatAttachmentEntity> attachments = const [],
     CancelToken? cancelToken,
+    void Function(SendStage stage)? onStage,
   }) async {
     // Snapshot the conversation as it stood *before* this message —
     // this becomes the "previous user/assistant messages" context
@@ -66,9 +75,9 @@ class SendMessageUseCase {
       text: text,
       sender: MessageSender.user,
       timestamp: DateTime.now(),
-      // Metadata only — Part 8A never reads these files' contents,
-      // and nothing below sends them to the response service. That's
-      // Part 8B's job.
+      // The stored message keeps attachment metadata only (path,
+      // name, size) — the actual file contents are read separately
+      // below, just for this request, and are never persisted here.
       attachments: attachments,
     );
 
@@ -93,13 +102,48 @@ class SendMessageUseCase {
       return;
     }
 
+    // Read/extract every attachment and format it into the labeled
+    // context block the agent receives alongside the user's text.
+    // Failing to build context is never fatal to the send — a
+    // timeout or an unexpected error here just means the message
+    // goes out without attachment context, same as if none had been
+    // attached.
+    String? attachmentContext;
+    try {
+      final contextResult = await _attachmentContextService
+          .build(attachments, onStage: onStage)
+          .timeout(_attachmentTimeout);
+      attachmentContext = contextResult.contextText;
+    } catch (error, stackTrace) {
+      AppLogger.error(
+        'SendMessageUseCase: failed to build attachment context for '
+        '$agentId, continuing without it',
+        error,
+        stackTrace,
+      );
+    }
+
+    if (cancelToken != null && cancelToken.isCancelled) {
+      return;
+    }
+
+    onStage?.call(SendStage.sendingToAi);
+
+    // A message with attachments but no typed caption still needs
+    // something for the agent to act on — the user's own (possibly
+    // empty) text is still what gets saved to the conversation above.
+    final effectiveUserMessage = text.isEmpty && attachments.isNotEmpty
+        ? 'Please review the attached file(s) and respond accordingly.'
+        : text;
+
     String replyText;
     try {
       replyText = await _responseService
           .getResponse(
             agentId: agentId,
             history: history,
-            userMessage: text,
+            userMessage: effectiveUserMessage,
+            attachmentContext: attachmentContext,
             cancelToken: cancelToken,
           )
           .timeout(_responseTimeout);
