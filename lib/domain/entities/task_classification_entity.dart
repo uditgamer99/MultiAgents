@@ -36,18 +36,24 @@ extension TaskCategoryAgent on TaskCategory {
 }
 
 /// Result of the CEO classifying a user's request — which
-/// specialty/specialties it involves, and a short reason why. This is
-/// the terminal output of Phase 3.1 Part 1A: nothing consumes it to
-/// actually call another agent yet (that's a later part).
+/// specialty/specialties it involves, a short reason why, and
+/// (optionally) how confident the model was. This is the raw parse of
+/// Groq's reply; [RoutingDecisionEntity] turns it into something a
+/// future execution phase could actually act on.
 class TaskClassificationEntity extends Equatable {
   final List<TaskCategory> categories;
   final String reason;
 
+  /// 0.0–1.0 if the model provided one, null otherwise — parsing
+  /// never fails just because this is missing.
+  final double? confidence;
+
   const TaskClassificationEntity({
     required this.categories,
     required this.reason,
+    this.confidence,
   });
 
   @override
-  List<Object?> get props => [categories, reason];
+  List<Object?> get props => [categories, reason, confidence];
 }
