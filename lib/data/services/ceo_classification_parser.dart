@@ -15,6 +15,7 @@ class CeoClassificationParser {
   static TaskClassificationEntity parse(String rawReply) {
     final categoryLine = _extractLine(rawReply, 'Category:');
     final reasonLine = _extractLine(rawReply, 'Reason:');
+    final confidenceLine = _extractLine(rawReply, 'Confidence:');
 
     final categories = <TaskCategory>[];
     if (categoryLine != null) {
@@ -32,7 +33,15 @@ class CeoClassificationParser {
         ? reasonLine.trim()
         : rawReply.trim();
 
-    return TaskClassificationEntity(categories: categories, reason: reason);
+    final confidence = confidenceLine != null
+        ? double.tryParse(confidenceLine.trim())
+        : null;
+
+    return TaskClassificationEntity(
+      categories: categories,
+      reason: reason,
+      confidence: confidence,
+    );
   }
 
   static String? _extractLine(String text, String prefix) {

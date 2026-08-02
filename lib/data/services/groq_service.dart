@@ -6,6 +6,7 @@ import '../../core/errors/exceptions.dart';
 import '../../core/utils/cancel_token.dart';
 import '../../core/utils/logger.dart';
 import '../../domain/entities/chat_message_entity.dart';
+import '../../domain/entities/routing_decision_entity.dart';
 import '../../domain/services/agent_response_service.dart';
 import '../constants/agent_system_prompts.dart';
 import 'ceo_classification_parser.dart';
@@ -189,11 +190,20 @@ class GroqService implements AgentResponseService {
     // agent is affected at all.
     if (agentId == 'ceo') {
       final classification = CeoClassificationParser.parse(trimmedContent);
+      final routing = RoutingDecisionEntity.fromClassification(classification);
       AppLogger.info(
-        'CEO classification — categories: '
-        '${classification.categories.map((c) => c.name).join(', ')}; '
-        'reason: ${classification.reason}',
+        'CEO routing decision — selectedAgentIds: '
+        '${routing.selectedAgentIds.join(', ')}; taskType: '
+        '${routing.taskType}; confidence: ${routing.confidence}; '
+        'reason: ${routing.reason}',
       );
+
+      // Phase 3.1 Part 1B: routing is intentionally not executed yet —
+      // this line exists purely so the routing decision is visible
+      // for testing, since it can't be checked any other way here.
+      // Safe to remove once a later phase actually executes routing
+      // and this becomes purely internal/logged.
+      return '$trimmedContent\n\n[Routing → ${routing.selectedAgentIds.join(', ')}]';
     }
 
     return trimmedContent;
